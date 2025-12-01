@@ -1,56 +1,74 @@
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom"; 
+import { useAuth } from "@/lib/auth-context";
 import { useProducts } from "@/lib/products-context";
 import { useUsers } from "@/lib/user-context";
-import { useState, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { useAuth } from "@/lib/auth-context";   
-import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
+import { Trash2, Plus, Loader2 } from "lucide-react"; 
 
 export default function AdminPage() {
+  const navigate = useNavigate(); 
+  const { user } = useAuth();
+
   const { addProduct } = useProducts();
   const { users, removeUser } = useUsers();
-  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!user || !user.isAdmin) {
+      
+      const timer = setTimeout(() => {
+        navigate("/"); 
+      }, 3000);
 
-  if (!user?.isAdmin) {
-    return <Navigate to="/login" replace />;
-  }
+      return () => clearTimeout(timer);
+    }
+  }, [user, navigate]);
 
   const [newProduct, setNewProduct] = useState({
     title: "",
     artist: "",
     price: 0,
     image: "",
-    format: "CD", 
-    genre: "Rock" 
+    format: "CD",
+    genre: "Rock"
   });
+
+  if (!user || !user.isAdmin) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-muted/30 gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <h2 className="text-2xl font-bold">Cerrando sesión...</h2>
+        <p className="text-muted-foreground">Te estamos redirigiendo a la página principal.</p>
+      </div>
+    );
+  }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Crea una URL temporal para ver la imagen de inmediato
-    const url = URL.createObjectURL(file); 
+    const url = URL.createObjectURL(file);
     setNewProduct({ ...newProduct, image: url });
   };
 
   const handlePublish = () => {
-
     if (!newProduct.title || newProduct.price <= 0 || !newProduct.image) {
-      toast({ title: "Error", description: "Completa todos los campos e incluye una imagen.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Completa todos los campos e incluye una imagen.", 
+        variant: "destructive" 
+      });
       return;
     }
 
-    // Guardamos el producto en el contexto global
     addProduct({
       id: Date.now(),
       title: newProduct.title,
@@ -64,8 +82,7 @@ export default function AdminPage() {
     });
 
     toast({ title: "Éxito", description: "Álbum publicado en el catálogo." });
-
-    // Limpiamos el formulario
+    
     setNewProduct({ title: "", artist: "", price: 0, image: "", format: "CD", genre: "Rock" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -79,7 +96,6 @@ export default function AdminPage() {
 
         <div className="grid gap-8 md:grid-cols-2">
           
-       
           <Card>
             <CardHeader>
               <CardTitle>Publicar Nuevo Álbum</CardTitle>
@@ -121,24 +137,19 @@ export default function AdminPage() {
                     onChange={(e) => setNewProduct({ ...newProduct, format: e.target.value })}
                   >
                     <option value="CD">CD</option>
-                    <option value="Vinilo">Vinilo</option>
-                    <option value="Cassette">Cassette</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Imagen de Portada</Label>
-                <div className="flex items-center gap-4">
-                  <Input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    className="cursor-pointer"
-                  />
-                </div>
-            
+                <Input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
+                />
                 {newProduct.image && (
                   <div className="mt-2 relative w-32 h-32 rounded-lg overflow-hidden border">
                     <img src={newProduct.image} alt="Preview" className="object-cover w-full h-full" />
@@ -153,6 +164,7 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
+          {/* Tarjeta 2: Usuarios */}
           <Card>
             <CardHeader>
               <CardTitle>Usuarios Registrados</CardTitle>
@@ -185,7 +197,6 @@ export default function AdminPage() {
 
         </div>
       </main>
-
       <Footer />
     </div>
   );
