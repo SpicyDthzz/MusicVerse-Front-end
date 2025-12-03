@@ -8,6 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { loginUsuario } from "@/service/UsuarioService"
+
+interface Login {
+  contrasenia: String
+  correo: string
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -17,14 +23,19 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  const loginPost: Login = {
+    contrasenia: password,
+    correo: email,
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault()
     setIsLoading(true)
     try {
-      await login(email, password)
+      const data = await loginUsuario(loginPost)
+      await login(data,email,password)
       toast({ title: "Bienvenido", description: "Has iniciado sesión correctamente" })
-      
-
       if (email === "admin@admin.com") {
         navigate("/admin")
       } else {

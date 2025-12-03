@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { obtenerAlbumsquery } from "@/service/AlbumService"
 
 export function Header() {
   const { totalItems } = useCart()
@@ -26,6 +27,7 @@ export function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
+      console.log(obtenerAlbumsquery(searchQuery))
       navigate(`/catalog?search=${encodeURIComponent(searchQuery)}`)
     }
   }
@@ -85,8 +87,8 @@ export function Header() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span>{user.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+                    <span>{user.nombre}</span>
+                    <span className="text-xs font-normal text-muted-foreground">{user.correo}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

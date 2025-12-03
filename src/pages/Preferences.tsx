@@ -5,27 +5,62 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { getGenerosLista,registrarGeneros,getGenerosUsuario } from "@/service/GenerosService"
 
-const musicGenres = [
-  "Rock", "Pop", "Reggaetón", "Rap", "Trap", "Metal", "Punk", "Blues", "Jazz", 
-  "Soul", "Emo", "Funk", "Ska", "Reggae","K-Pop", "Grunge",
-]
+interface MusicGenre {
+  idGenero: number;
+  nombre: string;
+}
+
+interface UsuarioGenero {
+  id: number;
+  nombre: string;
+}
+
+interface GeneroPost {
+  generosIds: number[];
+}
 
 export default function PreferencesPage() {
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const { user, updateUserPreferences } = useAuth()
-  const navigate = useNavigate()
-  const { toast } = useToast()
+  const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
+  const [musicGenres, setMusicGenres] = useState<MusicGenre[]>([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!user) {
-      navigate("/login")
+      navigate("/login");
     }
-  }, [user, navigate])
+  }, [user, navigate]);
 
-  const toggleGenre = (genre: string) => {
-    setSelectedGenres((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]))
-  }
+  useEffect(() => {
+    const fetchGeneros = async () => {
+      try {
+        const generosList = await getGenerosLista();
+        setMusicGenres(generosList);
+        const usuarioGeneros: UsuarioGenero[] = await getGenerosUsuario(user?.rut ?? "");
+        const selectedGenreIds = usuarioGeneros.map((genre) => genre.id);
+        setSelectedGenres(selectedGenreIds);
+      } catch (error) {
+        toast({
+          title: "Error al cargar los géneros",
+          description: "Hubo un problema al obtener la lista de géneros. Intenta nuevamente.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchGeneros();
+  }, [user, toast, navigate]);
+
+  const toggleGenre = (genreId: number) => {
+    setSelectedGenres((prev) =>
+      prev.includes(genreId)
+        ? prev.filter((id) => id !== genreId)
+        : [...prev, genreId]
+    );
+  };
 
   const handleContinue = () => {
     if (selectedGenres.length === 0) {
@@ -33,23 +68,25 @@ export default function PreferencesPage() {
         title: "Selecciona al menos un género",
         description: "Por favor selecciona tus géneros musicales favoritos",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    localStorage.setItem("musicPreferences", JSON.stringify(selectedGenres))
-    updateUserPreferences()
+    const generoPost: GeneroPost = {
+      generosIds: selectedGenres,
+    };
+    registrarGeneros(user?.rut ?? "", generoPost);
 
     toast({
       title: "Preferencias guardadas",
       description: `Has seleccionado ${selectedGenres.length} géneros musicales`,
-    })
+    });
 
-    navigate("/")
-  }
+    navigate("/");
+  };
 
   if (!user) {
-    return null
+    return null;
   }
 
   return (
@@ -69,14 +106,14 @@ export default function PreferencesPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
           {musicGenres.map((genre) => {
-            const isSelected = selectedGenres.includes(genre)
+            const isSelected = selectedGenres.includes(genre.idGenero);
             return (
               <Card
-                key={genre}
+                key={genre.idGenero}
                 className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
                   isSelected ? "ring-2 ring-primary shadow-lg" : ""
                 }`}
-                onClick={() => toggleGenre(genre)}
+                onClick={() => toggleGenre(genre.idGenero)}
               >
                 <CardContent className="p-6 text-center relative">
                   {isSelected && (
@@ -84,10 +121,10 @@ export default function PreferencesPage() {
                       <Check className="h-4 w-4" />
                     </div>
                   )}
-                  <p className="font-medium text-foreground">{genre}</p>
+                  <p className="font-medium text-foreground">{genre.nombre}</p>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
 
@@ -98,5 +135,5 @@ export default function PreferencesPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

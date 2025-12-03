@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams, useNavigate, Link } from "react-router-dom" 
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,10 +11,25 @@ import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useProducts } from "@/lib/products-context" 
 import { formatPrice } from "@/lib/format-price"
+import { getGenerosLista } from "@/service/GenerosService"
+import { getGenerosUsuario } from "@/service/GenerosService"
+
+interface MusicGenre {
+  idGenero: number;
+  nombre: string;
+}
+
+interface UsuarioGenero {
+  id: number;
+  nombre: string;
+}
 
 export default function CatalogPage() {
   const [selectedFormat, setSelectedFormat] = useState<string>("all")
   const [selectedGenre, setSelectedGenre] = useState<string>("all")
+  const [selectedId, setSelectedId] = useState<number>(-1)
+  const [musicGenres, setMusicGenres] = useState<MusicGenre[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const { addToCart } = useCart()
   const { user } = useAuth() 
   const { products } = useProducts() 
@@ -34,6 +49,27 @@ export default function CatalogPage() {
 
     return formatMatch && genreMatch && searchMatch
   })
+
+  useEffect(() => {
+    const fetchGeneros = async () => {
+      try {
+        const generosList = await getGenerosLista();
+        setMusicGenres(generosList);
+        const usuarioGeneros: UsuarioGenero[] = await getGenerosUsuario(user?.rut ?? "");
+        const selectedGenreIds = usuarioGeneros.map((genre) => genre.id);
+        setSelectedGenres(selectedGenreIds);
+      } catch (error) {
+        toast({
+          title: "Error al cargar los géneros",
+          description: "Hubo un problema al obtener la lista de géneros. Intenta nuevamente.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchGeneros();
+  }, [user, toast, navigate]);
+
 
   const handleAddToCart = (product: any) => {
     
@@ -96,14 +132,27 @@ export default function CatalogPage() {
 
             <div className="flex flex-wrap gap-2">
               <span className="text-sm font-medium text-muted-foreground self-center">Género:</span>
-              {genres.map((genre) => (
+              {musicGenres.map((genre) => (
                 <Button
-                  key={genre}
-                  variant={selectedGenre === genre ? "default" : "outline"}
+                  key={genre.idGenero}
+                  variant={selectedGenre === genre.nombre ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSelectedGenre(genre)}
+                  onClick={() => setSelectedGenre(genre.nombre)}
                 >
-                  {genre === "all" ? "Todos" : genre}
+                  {genre.nombre === "all" ? "Todos" : genre.nombre}
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-sm font-medium text-muted-foreground self-center">Género:</span>
+              {musicGenres.map((genre) => (
+                <Button
+                  key={genre.idGenero}
+                  variant={selectedId === genre.idGenero ? "default" : "outline"}  // Comparar con `idGenero` en lugar de `nombre`
+                  size="sm"
+                  onClick={() => setSelectedId(genre.idGenero)}  // Establecer el `idGenero` como el valor seleccionado
+                >
+                  {genre.nombre === "all" ? "Todos" : genre.nombre}
                 </Button>
               ))}
             </div>

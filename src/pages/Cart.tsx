@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { useNavigate,Link } from "react-router-dom"
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -6,9 +6,39 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/lib/cart-context"
 import { formatPrice } from "@/lib/format-price"
+import { useToast } from "@/hooks/use-toast"
 
+interface ProductoCompra {
+  idAlbum: number,
+  cantidad: number,
+  desc: number
+}
+interface ProductosLista {
+  productos: ProductoCompra[]
+}
 export default function CartPage() {
   const { items, removeFromCart, updateQuantity, totalPrice } = useCart()
+  const { toast } = useToast();
+  const navigate = useNavigate()
+
+  const handleContinue = () => {
+    if (items.length === 0) {
+      toast({
+        title: "No hay productos en el carro",
+        description: "Por favor selecciona productos",
+        variant: "destructive",
+      });
+      return;
+    }
+    const productosLista: ProductosLista = {
+      productos: items.map((item) => ({
+        idAlbum: item.id,
+        cantidad: item.quantity,
+        desc: 0,
+      })),
+    };
+    navigate('/checkout', { state: { productosLista } });
+  };
 
   if (items.length === 0) {
     return (
@@ -112,7 +142,7 @@ export default function CartPage() {
                     <span>Total</span>
                     <span className="text-primary">${formatPrice(totalPrice)}</span>
                   </div>
-                  <Button asChild size="lg" className="w-full">
+                  <Button asChild size="lg" className="w-full" onClick={handleContinue}>
                     <Link to="/checkout">Procesar Compra</Link>
                   </Button>
                   <Button asChild variant="outline" size="lg" className="w-full bg-transparent">

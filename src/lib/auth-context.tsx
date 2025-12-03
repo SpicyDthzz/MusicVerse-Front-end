@@ -1,25 +1,46 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { useNavigate } from "react-router-dom"
+import { loginUsuario } from "@/service/UsuarioService";
 
-const ADMIN_EMAIL = "admin@admin.com";
-const ADMIN_PASS = "1234";
+const ADMIN_ROLE = "Admin";
 
 interface User {
   id: string
-  email: string
-  name: string
+  correo: string
+  rut: string
+  nombre: string
+  direccion: string
+  fechaNacimiento: string
+  genero: string
+  metodoPago: number
   hasSelectedPreferences: boolean
   isAdmin?: boolean
 }
 
+interface Login {
+  contrasenia: String
+  correo: string
+}
+
+interface UserGet {
+  rut: string;
+  usuario: string;
+  rol: string;
+  direccion: string;
+  telefono: string;
+  fecha: string;
+  metodoPago: number;
+  genero: string;
+}
 
 interface StoredUser extends User {
-  password?: string
+  contrasenia?: string
 }
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, name: string) => Promise<void>
+  login: (userGet: UserGet, email: string, password: string) => Promise<void>
+  register: (correo: string, contrasenia: string) => Promise<void>
   logout: () => void
   updateUserPreferences: () => void
 }
@@ -36,66 +57,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (userGet: UserGet, correo: string, contrasenia: string) => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Verificar Admin
-    if (email === ADMIN_EMAIL && password === ADMIN_PASS) {
+    if (userGet.rol === ADMIN_ROLE) {
       const adminUser: User = {
         id: "admin-id",
-        email: ADMIN_EMAIL,
-        name: "Administrador",
+        correo: correo,
+        nombre: userGet.usuario,
         hasSelectedPreferences: true,
-        isAdmin: true
+        isAdmin: true,
+        rut: userGet.rut,
+        direccion: userGet.direccion,
+        fechaNacimiento: userGet.fecha,
+        genero: userGet.genero,
+        metodoPago: userGet.metodoPago
       };
       setUser(adminUser);
       localStorage.setItem("activeSession", JSON.stringify(adminUser));
       return;
     }
-
-    // Verificar Usuarios Registrados en localStorage
-    const storedUsersStr = localStorage.getItem("registeredUsers");
-    const storedUsers: StoredUser[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
-    
-    const foundUser = storedUsers.find(u => u.email === email && u.password === password);
-
-    if (foundUser) {
-      // Quitamos el password antes de guardar en sesión
-      const { password, ...safeUser } = foundUser;
-      setUser(safeUser);
-      localStorage.setItem("activeSession", JSON.stringify(safeUser));
-    } else {
-      throw new Error("Credenciales inválidas");
-    }
+    const user: User = {
+      id: "user-id",
+      correo: correo,
+      nombre: userGet.usuario,
+      hasSelectedPreferences: true,
+      isAdmin: false,
+      rut: userGet.rut,
+      direccion: userGet.direccion,
+      fechaNacimiento: userGet.fecha,
+      genero: userGet.genero,
+      metodoPago: userGet.metodoPago
+    };
+    setUser(user);
+    localStorage.setItem("activeSession", JSON.stringify(user));
+    return;
   }
 
-  const register = async (email: string, password: string, name: string) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const newUser: StoredUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
-      hasSelectedPreferences: false,
-      password: password 
+  const register = async (correo: string, contrasenia: string) => {
+    const loginPost: Login = {
+      contrasenia: contrasenia,
+      correo: correo
     }
-
-    // Guardar en la "base de datos" local
-    const storedUsersStr = localStorage.getItem("registeredUsers");
-    const storedUsers: StoredUser[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
-    
-    // Verificar si ya existe
-    if (storedUsers.some(u => u.email === email)) {
-       throw new Error("El usuario ya existe");
-    }
-
-    storedUsers.push(newUser);
-    localStorage.setItem("registeredUsers", JSON.stringify(storedUsers));
-
-    // Iniciar sesión automáticamente (sin password en el estado)
-    const { password: _, ...safeUser } = newUser;
-    setUser(safeUser);
-    localStorage.setItem("activeSession", JSON.stringify(safeUser));
+    const data = await loginUsuario(loginPost)
+    await login(data,correo,contrasenia)
   }
 
   const logout = () => {
@@ -123,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUserPreferences }}>
+    <AuthContext.Provider value={{ user, register, login, logout, updateUserPreferences }}>
       {children}
     </AuthContext.Provider>
   )

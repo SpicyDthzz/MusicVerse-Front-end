@@ -1,6 +1,6 @@
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate,useLocation } from "react-router-dom"
 import { CreditCard, Truck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,18 @@ import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { formatPrice } from "@/lib/format-price"
+import { registrarVenta } from "@/service/VentaService"
+
+interface ProductoCompra {
+  idAlbum: number,
+  cantidad: number,
+  desc: number
+}
+interface VentaInter{
+  rutUsuario: string,
+  idMetodoPago: number
+  productos: ProductoCompra[]
+}
 
 export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -21,7 +33,7 @@ export default function CheckoutPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
-
+  
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -34,10 +46,14 @@ export default function CheckoutPage() {
   })
 
   useEffect(() => {
+    if (!user) {
+      navigate("/login");
+      return
+    }
     if (items.length === 0 && !showSuccess) {
       navigate("/catalog")
     }
-  }, [items, navigate, showSuccess])
+  }, [user, items, navigate, showSuccess])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -47,11 +63,25 @@ export default function CheckoutPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if (!user) {
+      navigate("/login");
+      return
+    }
+    const ventalista: VentaInter = {
+      rutUsuario: user.rut,
+      idMetodoPago: user.metodoPago,
+      productos: items.map((item) => ({
+        idAlbum: item.id,
+        cantidad: item.quantity,
+        desc: 0,
+      })),
+    };
+    const response = await registrarVenta(ventalista);
+    console.log(ventalista)
     e.preventDefault()
     setIsProcessing(true)
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
-
     setShowSuccess(true)
     clearCart()
     setIsProcessing(false)
@@ -99,7 +129,7 @@ export default function CheckoutPage() {
           <h1 className="text-3xl md:text-4xl font-bold mb-8">Finalizar Compra</h1>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+            {user ? (<div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -114,9 +144,9 @@ export default function CheckoutPage() {
                       <Input
                         id="fullName"
                         name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
+                        value={user.nombre}
                         required
+                        disabled
                       />
                     </div>
                     <div className="space-y-2">
@@ -125,31 +155,31 @@ export default function CheckoutPage() {
                         id="email"
                         name="email"
                         type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
+                        value={user.correo}
                         required
+                        disabled
                       />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Dirección</Label>
-                    <Input id="address" name="address" value={formData.address} onChange={handleInputChange} required />
-                  </div>
-
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="city">Ciudad</Label>
-                      <Input id="city" name="city" value={formData.city} onChange={handleInputChange} required />
+                      <Label htmlFor="city">Rut</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={user.rut}
+                        required
+                        disabled
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="postalCode">Código Postal</Label>
+                      <Label htmlFor="address">Dirección</Label>
                       <Input
-                        id="postalCode"
-                        name="postalCode"
-                        value={formData.postalCode}
-                        onChange={handleInputChange}
+                        id="address"
+                        name="address"
+                        value={user.direccion}
                         required
+                        disabled
                       />
                     </div>
                   </div>
@@ -165,44 +195,23 @@ export default function CheckoutPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cardNumber">Número de Tarjeta</Label>
+                    <Label htmlFor="mtdPago">Metodo de pago</Label>
                     <Input
-                      id="cardNumber"
-                      name="cardNumber"
-                      placeholder="1234 5678 9012 3456"
-                      value={formData.cardNumber}
-                      onChange={handleInputChange}
+                      id="mtdPago"
+                      name="mtdPago"
+                      placeholder=""
+                      value={user.metodoPago}
                       required
+                      disabled
                     />
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expiryDate">Fecha de Vencimiento</Label>
-                      <Input
-                        id="expiryDate"
-                        name="expiryDate"
-                        placeholder="MM/AA"
-                        value={formData.expiryDate}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cvv">CVV</Label>
-                      <Input
-                        id="cvv"
-                        name="cvv"
-                        placeholder="123"
-                        value={formData.cvv}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </div>):(
+              <>
+                <h1>Error</h1>
+              </>
+            )}
 
             <div className="lg:col-span-1">
               <Card className="sticky top-20">
